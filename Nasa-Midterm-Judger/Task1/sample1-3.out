@@ -1,0 +1,6 @@
+------ JudgeGuest ------
+Data DIR: testcases
+Test on: tle.c
+------------------------
+1                   Accepted
+2                   Time Limit Exceeded

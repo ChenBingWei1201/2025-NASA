@@ -1,0 +1,119 @@
+6 ZIP Checker (25 points)
+請用 shell script 實作一個 zip checker，檢查輸入的 zip 檔案是否符合輸入的格式規範。執行時第一個參數會是 zip 檔案、第二個會是一個描述格式規範的 JSON 檔。也就是說，如果你的 script 叫做 checker.sh ，那麼它會以如下的方式被執行：
+./checker.sh input.zip format.json
+你的程式必須判斷 input.zip 是否符合 format.json 的要求，如果是的話請回傳 0 、否則回傳一個非 0 的結果。format.json 的格式可以用下面的遞迴關係來描述1 ：
+<spec> ::= { <directory-spec> }
+<directory-spec> ::=
+  "<directory-name>": [ <file-specs> ] |
+  "<directory-name>": { <directory-fields> }
+
+<directory-fields> ::=
+  <directory-fields>, <directory-spec-or-files> |
+  <empty>
+
+<directory-spec-or-files> ::=
+  <directory-spec> |
+  "_files": [ <file-specs> ]
+
+<file-specs> ::=
+  <file-specs>, "<file-name>" |
+  <empty>
+
+其中 file-name 以及 directory-name 皆是僅包含大小寫英文字母（[a-zA-Z]）、數字（[0-9]）以及點（.）的 ASCII 字串，而 <empty> 則是代表空字串。以下是一個合法的格式規範檔：
+
+{
+  "b09902000": {
+    "code": {
+      "sh": ["p1.sh", "p2.sh"],
+      "cpp": ["p3.cpp"],
+      "py": [],
+      "_files": ["Makefile"]
+    },
+    "report": ["report.pdf"],
+    "_files": ["^.gitignore", "README.md"]
+  }
+}
+
+簡單來說，對於給定的 format.json ，一個輸入的 zip 檔案 input.zip 是符合規則的若下面的條件皆滿足：
+- input.zip 為單一資料夾的壓縮檔。也就是說，所有的檔案以及子資料夾都必須直接或間接的被最上層的資料夾包含。這樣的 zip 檔案通常可以用 zip -r input.zip directory 這樣的指令製造。
+- 從 input.zip 中的最上層資料夾 D 開始，每個子資料夾都必須遞迴的滿足 format.json 中相對應的規則。首先，D 的名字必須與 format.json 中最外層唯一的 key K（在上述範例中是 b09902000）完全相符。再來，考慮以下的幾個情形：
+– K 對應到的 field 是一個 array：此時 D 必須不包含任何子資料夾，且 D 包含的檔案必須滿足該 array 的規範。這個部分稍後會作說明。
+– K 對應到的 field 是一個 object：此時考慮該 object 中的每一個 key K ′ 。若 K ′ 為 "_files"，則 K ′ 對應到的 field 一定是一個 array，此時代表 D 中直接包含的檔案必須滿足該 array 的規範。否則，K ′ 以及其對應的 field F 描述了 D 的一個子資料夾，代表 D 必須有一個名為 K ′ 的子資料夾，且該子資料夾必須遞迴地滿足 F 的限制。
+注意到 D 中的每一個子資料夾都必須在 format.json 中有對應的描述，這部分詳細可以參考後面的範例。
+
+對於一個資料夾 D 以及一個陣列（例如一個 "_files" 所對應的陣列），如果對於陣列裡的每個字串 f，下面的條件都滿足的話：
+- 如果 f = ^ g，則 D 不包含檔名為 g 的檔案
+- 不然，代表 D 包含檔名為 f 的檔案
+那麼 D 就算是符合這個檔案陣列的規定。同樣注意到檔案與資料夾規則的不同：對於檔案來說，沒有被描述到的檔案沒有任何的規範，而對於資料夾來說，若存在沒有被描述到的子資料夾，則視為格式不正確。
+為了方便說明，以下舉一個較簡單的 format.json 範例：
+{
+  "b09902000": {
+    "subdir1": ["test.txt"],
+    "subdir2": {
+      "test": ["test2.txt"],
+      "_files": ["ok"]
+    },
+    "_files": ["^forbidden"]
+  }
+}
+
+以下為一些合法與不合法的 zip 檔案範例：
+
+- 合法：
+b09902000/
+b09902000/subdir1/
+b09902000/subdir1/test.txt
+b09902000/subdir2/
+b09902000/subdir2/test/
+b09902000/subdir2/test/test2.txt
+b09902000/subdir2/ok
+
+- 不合法（包含 forbidden）：
+b09902000/
+b09902000/subdir1/
+b09902000/subdir1/test.txt
+b09902000/subdir2/
+b09902000/subdir2/test/
+b09902000/subdir2/test/test2.txt
+b09902000/subdir2/ok
+b09902000/forbidden
+
+- 合法（就算包含 ok2）：
+b09902000/
+b09902000/subdir1/
+b09902000/subdir1/test.txt
+b09902000/subdir2/
+b09902000/subdir2/test/
+b09902000/subdir2/test/test2.txt
+b09902000/subdir2/ok
+b09902000/subdir2/ok2
+
+- 不合法（包含 subdir3）：
+b09902000/
+b09902000/subdir1/
+b09902000/subdir1/test.txt
+b09902000/subdir2/
+b09902000/subdir2/test/
+b09902000/subdir2/test/test2.txt
+b09902000/subdir2/ok
+b09902000/subdir3/
+b09902000/subdir3/ok
+
+6.1
+在這個子題中，輸入的 format.json 中最上層唯一一個 field 一定是 array。也就是說，只需要處理一層的資料夾並檢查它所包含的檔案即可。更具體地，只會出現形式同下的 format.json：
+
+{
+  "b09902000": ["file1.txt", "file2.txt", "^file3.txt"]
+}
+
+6.2
+放寬上一個子題的限制，可允許任意層數的資料夾。
+
+Notes
+• 可以使用 jq 這個工具來處理輸入的 JSON 檔。
+• 請在不將輸入完全解壓縮的情況下完成檢查。
+• 為了避免不必要的麻煩，輸入的 zip 壓縮檔中所有資料夾以及檔案名稱一樣只包含大小寫英文、數字以及點。
+• 對於 Subtask 3 ，假設某個資料夾或是檔案的名稱含有 REGEX 的定義，那麼在所有同層的資料夾以及檔案中，至多只有一個符合該 REGEX 。
+
+Hints
+• 對應到 Notes 的第二項，要如何在沒有完全解壓縮的情況下看到 zip 檔的結構？

@@ -1,0 +1,7 @@
+------ JudgeGuest ------
+Data DIR: tests
+Test on: code.c
+------------------------
+1                   Accepted
+2                   Wrong Answer
+3                   Time Limit Exceeded

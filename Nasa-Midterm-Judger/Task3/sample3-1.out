@@ -1,0 +1,10 @@
+------ JudgeGuest ------
+Data DIR: testcases
+Test on: code.c
+------------------------
+0-01                Accepted
+1-01                Wrong Answer
+
+Subtask s1                  Passed
+Subtask s2                  Failed
+Total Score: 50

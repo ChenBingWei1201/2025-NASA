@@ -1,0 +1,10 @@
+{
+  "testdir": {
+    "subdir1": ["file1.txt"],
+    "subdir2": {
+      "subsubdir": ["file2.txt"],
+      "_files": ["config.txt"]
+    },
+    "_files": ["^forbidden.txt", "README.md"]
+  }
+}

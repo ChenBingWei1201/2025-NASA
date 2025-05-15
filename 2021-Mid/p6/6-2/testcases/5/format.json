@@ -1,0 +1,6 @@
+{
+  "testdir": {
+    "subdir1": ["file1.txt"],
+    "_files": ["README.md"]
+  }
+}

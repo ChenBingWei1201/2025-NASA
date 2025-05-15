@@ -1,0 +1,36 @@
+=== Running test 1 ===
+Test 1: Simple valid case with files only
+Result: PASSED (exit code 0)
+
+=== Running test 2 ===
+Test 2: Missing required file
+Error: Missing required files in testdir: file2.txt
+Result: FAILED (exit code 1)
+
+=== Running test 3 ===
+Test 3: Contains forbidden file
+Error: Found forbidden files in testdir: forbidden.txt
+Result: FAILED (exit code 1)
+
+=== Running test 4 ===
+Test 4: Valid nested directory structure
+Result: PASSED (exit code 0)
+
+=== Running test 5 ===
+Test 5: Unexpected subdirectory
+Error: Unexpected subdirectory found: testdir/unexpected
+Result: FAILED (exit code 1)
+
+=== Running test 6 ===
+Test 6: Empty directory (valid)
+Result: PASSED (exit code 0)
+
+=== Running test 7 ===
+Test 7: Complex valid case with multiple levels
+Result: PASSED (exit code 0)
+
+=== Running test 8 ===
+Test 8: Complex invalid case with multiple issues
+Error: Found forbidden files in project: .env
+Result: FAILED (exit code 1)
+

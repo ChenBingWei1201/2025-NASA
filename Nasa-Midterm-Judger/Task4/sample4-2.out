@@ -1,0 +1,16 @@
+------ JudgeGuest ------
+Data DIR: testcases
+Test on: wa.c
+------------------------
+0-01                Accepted
+1-01                Accepted
+2-01                Wrong Answer
+3-01                Accepted
+4-01                Accepted
+
+Subtask s1                  Passed
+Subtask s2                  Failed
+Subtask s3                  Passed
+Subtask s4                  Failed
+Subtask sample              Passed
+Total Score: 46

@@ -1,0 +1,37 @@
+# You can find that you’re basically just writing the parameters you'd use with docker run into a YAML file.
+# docker-compose.yml
+services:
+  mariadb:
+    image: mariadb
+    container_name: dj-mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password 
+      MYSQL_DATABASE: domjudge
+    ports:
+      - "13306:3306"
+    networks:
+      - domjudge-net
+    command: --max-connections=1000
+
+  domserver:
+    image: domjudge/domserver:latest
+    container_name: domserver
+    depends_on:
+      - mariadb
+    environment:
+      MYSQL_HOST: dj-mariadb
+      MYSQL_USER: user
+      MYSQL_DATABASE: domjudge
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - "12345:80"
+    networks:
+      - domjudge-net
+
+networks:
+  domjudge-net:
+    driver: bridge
+

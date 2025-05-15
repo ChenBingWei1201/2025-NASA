@@ -1,0 +1,14 @@
+{
+  "project": {
+    "src": {
+      "main": ["Main.java"],
+      "test": ["Test.java"],
+      "_files": ["build.gradle"]
+    },
+    "docs": ["README.md", "LICENSE"],
+    "config": {
+      "_files": ["^temp.conf", "settings.conf"]
+    },
+    "_files": ["^.env", "Makefile"]
+  }
+}

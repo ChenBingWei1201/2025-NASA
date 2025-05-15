@@ -1,0 +1,23 @@
+{
+  "sample": {
+    "score": 0,
+    "testcases": ["^0-*"]
+  },
+  "s1": {
+    "score": 9,
+    "testcases": ["^1-*"]
+  },
+  "s2": {
+    "score": 15,
+    "testcases": ["^2-*"]
+  },
+  "s3": {
+    "score": 37,
+    "testcases": ["^3-*"]
+  },
+  "s4": {
+    "score": 39,
+    "testcases": ["^4-*"],
+    "include": ["sample", "s1", "s2", "s3"]
+  }
+}

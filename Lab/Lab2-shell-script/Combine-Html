@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# Function to print usage information
+usage() {
+    echo "Usage: $0 --input [input file] --output [output file]"
+    exit 1
+}
+
+# Function to resolve absolute path based on parent file's directory
+resolve_path() {
+    local parent_dir="$1"
+    local include_path="$2"
+
+    if [[ "$include_path" == /* ]]; then
+        echo "$include_path"  # Absolute path, return as is
+    else
+        echo "$parent_dir/$include_path"  # Relative path, resolve based on parent directory
+    fi
+}
+
+# Function to process includes recursively
+process_includes() {
+    local input_file="$1"
+    local parent_dir
+    parent_dir="$(dirname "$input_file")"
+
+    if [[ ! -r "$input_file" || -d "$input_file" ]]; then
+        echo "<p style=\"color:red;\">Cannot access $input_file</p>"
+        return
+    fi
+
+    local content
+    content=$(cat "$input_file")
+
+    # Regex pattern for valid filenames (alpha-numeric, underscores, optional extension)
+    local regex='<include src="([a-zA-Z0-9_/]+(\.[a-zA-Z0-9_]+)?)" />'
+
+    while [[ "$content" =~ $regex ]]; do
+        local include_path="${BASH_REMATCH[1]}"
+        local resolved_path
+        resolved_path=$(resolve_path "$parent_dir" "$include_path")
+
+        if [[ ! -r "$resolved_path" || -d "$resolved_path" ]]; then
+            replacement="<p style=\"color:red;\">Cannot access $include_path</p>"
+        else
+            local ext="${resolved_path##*.}"
+            if [[ "$ext" == "jpg" || "$ext" == "png" ]]; then
+                local mime_type="image/$ext"
+                local base64_content
+                base64_content=$(base64 -w 0 "$resolved_path")
+                replacement="<img src=\"data:$mime_type;base64,$base64_content\" />"
+            elif [[ "$ext" == "html" ]]; then
+                replacement="$(process_includes "$resolved_path")"
+            else
+                replacement="$(cat "$resolved_path")"
+            fi
+        fi
+
+        content="${content//$BASH_REMATCH/$replacement}"
+    done
+
+    printf "%s" "$content"
+}
+
+# Argument Parsing
+input_file=""
+output_file=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --input)
+            [[ -z "$2" ]] && usage
+            input_file="$2"
+            shift 2
+            ;;
+        --output)
+            [[ -z "$2" ]] && usage
+            output_file="$2"
+            shift 2
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+
+# Validate input/output files
+if [[ -z "$input_file" || -z "$output_file" ]]; then
+    usage
+fi
+
+# Process input file
+result="$(process_includes "$input_file")"
+
+# Validate output file can be written
+if [[ -d "$output_file" || ! -w "$(dirname "$output_file")" ]]; then
+    echo "Error: Cannot write to output file $output_file"
+    exit 1
+fi
+
+# Write output
+printf "$result" > "$output_file"

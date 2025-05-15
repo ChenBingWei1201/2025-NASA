@@ -1,0 +1,1 @@
+Test 8: Complex invalid case with multiple issues
