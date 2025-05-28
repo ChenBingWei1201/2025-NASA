@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from pwn import *
+from pwnlib.tubes.remote import remote
 from binascii import unhexlify
 import re
 import hashlib
@@ -114,7 +115,7 @@ def try_decrypt_comprehensive(encrypted_hex):
     
     return best_results
 
-def solve_part_a(conn):
+def solve_part_a(conn: remote):
     """Build trust to 100 using LCG attack"""
     print("\n=== Part (a): LCG Attack for FLAG1 ===")
 
@@ -174,7 +175,7 @@ def solve_part_a(conn):
 
     return True
 
-def solve_part_b(conn):
+def solve_part_b(conn: remote):
     """OTP Attack"""
     print("\n=== Part (b): OTP Attack for FLAG2 ===")
 
@@ -217,7 +218,7 @@ def solve_part_b(conn):
         print("Failed to decrypt FLAG2")
         return False
 
-def solve_part_c(conn):
+def solve_part_c(conn: remote):
     """Proof of Work Challenge"""
     print("\n=== Part (c): Proof of Work for FLAG3 ===")
 
@@ -286,7 +287,7 @@ def solve_part_c(conn):
     return True
 
 def solve_all_parts():
-    conn = remote('140.112.91.4', 1234)
+    conn: remote = remote('140.112.91.4', 1234)
     
     try:
         # PART (A): LCG Attack
