@@ -267,19 +267,17 @@ def solve_part_c(conn: remote):
     return True
 
 def solve_part_d(conn: remote):
-    """Club Membership MAC Reuse Attack for FLAG4"""
+    """Club Membership Verification"""
     print("\n=== Part (d): Club Membership MAC Reuse Attack for FLAG4 ===")
     
-    # Attack strategy: MAC reuse vulnerability
-    # The MAC only depends on SHA256(nonce||shared_key), not the username
-    # So we can get fatcat's MAC and reuse it with our own username
-    print("Step 1: Starting verification to get nonce...")
+    # The MAC only depends on SHA256(nonce||shared_key), not the username so we can get fatcat's MAC and reuse it with our own username
+    print("Step 1: Get nonce")
     conn.recvuntil(b"Your choice: ")
     conn.sendline(b"5")  # Ask fatcat to verify your club membership
     
     # Read the verification setup
-    line1 = conn.recvline().decode()  # "Let me verify if you're a member first."
-    line2 = conn.recvline().decode()  # "nonce: XXXXX"
+    line1 = conn.recvline().decode()
+    line2 = conn.recvline().decode()  # get nonce
     
     print(f"Verification message: {line1.strip()}")
     print(f"Nonce line: {line2.strip()}")
@@ -294,7 +292,7 @@ def solve_part_d(conn: remote):
     
     # Step 2: Get the correct MAC by asking fatcat to prove with this nonce
     # We need to open a second connection since we're in the middle of verification
-    print("Step 2: Opening second connection to get MAC from fatcat...")
+    print("Step 2: Open second connection to get MAC from fatcat")
     
     conn2 = remote("140.112.91.4", 1234)
     
@@ -324,7 +322,7 @@ def solve_part_d(conn: remote):
         return False
     
     # Step 3: Use the correct MAC with our own name for verification
-    print("Step 3: Submitting forged response...")
+    print("Step 3: Submit forged response")
     
     my_name = "hacker" # can be any name except fatcat
     forged_response = f"{my_name}||{correct_mac}"
@@ -332,7 +330,7 @@ def solve_part_d(conn: remote):
     print(f"Sending: {forged_response}")
     conn.sendline(forged_response.encode())
     
-    # Step 4: Check for FLAG4
+    # Check for FLAG4
     try:
         response = conn.recvline(timeout=5).decode()
         print(f"Response: {response.strip()}")
