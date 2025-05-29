@@ -28,52 +28,78 @@ def find_valid_flag_in_text(text):
     matches = re.findall(PATTERN, text)
     return matches[0] if matches else None
 
-def bruteforce_repeating_key_xor_flag(encrypted_hex):
-    """Bruteforce the repeating key xor flag"""
-    encrypted = unhexlify(encrypted_hex)
-    
-    test_string = "NASA_HW11{".encode('ascii')
-    best_results = []
-
-    def try_key(test_key, pos):
-        decrypted = [c ^ test_key[i % 10] for i, c in enumerate(encrypted)]
-        decoded = bytes(decrypted).decode('ascii', errors='replace')
+def test_key_and_decrypt(encrypted, key):
+    """Test key and decrypt, return flag if successful, None otherwise"""
+    try:
+        # Decrypt using the key
+        decrypted = bytes(encrypted[i] ^ key[i % 10] for i in range(len(encrypted)))
+        decoded = decrypted.decode("ascii", errors="replace")
+        
+        # Check decryption quality
         printable_ratio = sum(1 for c in decoded if c.isprintable()) / len(decoded)
-        if printable_ratio > 0.7 and re.search(PATTERN, decoded):
-            flag = find_valid_flag_in_text(decoded)
-            if flag:
-                best_results.append({
-                    'position': pos,
-                    'key': bytes(test_key),
-                    'flag': flag,
-                    'full_text': decoded,
-                    'printable_ratio': printable_ratio
-                })
+        
+        # Look for flag
+        if printable_ratio == 1 and "NASA_HW11{" in decoded:
+            flag_match = re.search(PATTERN, decoded)
+            if flag_match:
+                return flag_match.group(0), decoded, printable_ratio
+        
+        return None
+    except:
+        return None
 
-    for pos in range(len(encrypted) - len(test_string) + 1):
-        key_fragment = [encrypted[pos + i] ^ test_string[i] for i in range(len(test_string))]
-        key = [None] * 10
+def bruteforce_repeating_key_xor_flag(encrypted_hex):
+    """Complete brute force approach for OTP attack"""
+    
+    encrypted = unhexlify(encrypted_hex)
+    print(f"Encrypted data length: {len(encrypted)} bytes")
+    
+    # Known plaintext attack: try every possible starting position
+    known_plaintext = b"NASA_HW11{"
+    candidates = []
 
+    for start_pos in range(len(encrypted) - len(known_plaintext) + 1):
+        print(f"Trying position {start_pos}")
+        
+        # Derive key fragment from known plaintext
+        partial_key = {}
         consistent = True
-        for i, kb in enumerate(key_fragment):
-            key_idx = (pos + i) % 10
-            if key[key_idx] is None:
-                key[key_idx] = kb
-            elif key[key_idx] != kb:
-                consistent = False
-                break
+        
+        for i in range(len(known_plaintext)):
+            cipher_pos = start_pos + i
+            key_pos = cipher_pos % 10  # 10-byte cycle
+            
+            # Calculate key byte at this position
+            key_byte = encrypted[cipher_pos] ^ known_plaintext[i]
+            
+            # Check consistency with previously derived values
+            if key_pos in partial_key:
+                if partial_key[key_pos] != key_byte:
+                    consistent = False
+                    break
+            else:
+                partial_key[key_pos] = key_byte
         
         if not consistent:
             continue
-
-        if any(k is None for k in key):
-            for fill_byte in [0x00, 0x20, 0x41, 0x61, 0x30]:
-                test_key = [k if k is not None else fill_byte for k in key]
-                try_key(test_key, pos)
-        else:
-            try_key(key, pos)
+        
+        print(f"Position {start_pos} passed consistency check")
+        print(f"Recovered key positions: {partial_key}")
+        
+        # Key fully recovered
+        key = [partial_key[i] for i in range(10)]
+        result = test_key_and_decrypt(encrypted, key)
+        if result:
+            flag, full_text, ratio = result
+            candidates.append({
+                'position': start_pos,
+                'key': bytes(key),
+                'flag': flag,
+                'full_text': full_text,
+                'printable_ratio': ratio
+            })
     
-    return best_results
+    return candidates
 
 def solve_part_a(conn: remote):
     """Build trust to 100 using LCG attack"""
@@ -140,7 +166,7 @@ def solve_part_a(conn: remote):
     return True
 
 def solve_part_b(conn: remote):
-    """OTP Attack"""
+    """OTP Attack using systematic brute force approach"""
     print("\n=== Part (b): OTP Attack for FLAG2 ===")
 
     conn.recvuntil(b"Your choice: ")
@@ -162,7 +188,7 @@ def solve_part_b(conn: remote):
         return False
         
     results = bruteforce_repeating_key_xor_flag(encrypted_hex)
-    
+
     if results:
         best_result = max(results, key=lambda x: x["printable_ratio"])
         print(f"Response: {best_result['full_text']}")
