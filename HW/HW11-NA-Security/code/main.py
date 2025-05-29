@@ -6,6 +6,8 @@ from binascii import unhexlify
 import re
 import hashlib
 
+PATTERN = r'NASA_HW11\{[0-9A-Za-z_\':/@]+\}'
+
 def crack_lcg(s0, s1, s2, m):
     """Crack LCG parameters a and c"""
     numerator = (s2 - s1) % m
@@ -23,31 +25,35 @@ def crack_lcg(s0, s1, s2, m):
 
 def find_valid_flag_in_text(text):
     """Extract valid flag from decrypted text"""
-    pattern = r'NASA_HW11\{[0-9A-Za-z_\':/@]+\}'
-    matches = re.findall(pattern, text)
+    matches = re.findall(PATTERN, text)
     return matches[0] if matches else None
 
-def try_decrypt_comprehensive(encrypted_hex):
-    """Try comprehensive decryption approaches"""
+def bruteforce_repeating_key_xor_flag(encrypted_hex):
+    """Bruteforce the repeating key xor flag"""
     encrypted = unhexlify(encrypted_hex)
     
-    # Try "NASA_HW11{" at different positions
-    test_string = "NASA_HW11{"
-    test_bytes = test_string.encode('ascii')
-    
+    test_string = "NASA_HW11{".encode('ascii')
     best_results = []
-    
-    for pos in range(len(encrypted) - len(test_bytes) + 1):
-        # Extract key bytes for this position
-        key_fragment = []
-        for i in range(len(test_bytes)):
-            key_byte = encrypted[pos + i] ^ test_bytes[i]
-            key_fragment.append(key_byte)
-        
-        # Try 10-byte repeating key
+
+    def try_key(test_key, pos):
+        decrypted = [c ^ test_key[i % 10] for i, c in enumerate(encrypted)]
+        decoded = bytes(decrypted).decode('ascii', errors='replace')
+        printable_ratio = sum(1 for c in decoded if c.isprintable()) / len(decoded)
+        if printable_ratio > 0.7 and re.search(PATTERN, decoded):
+            flag = find_valid_flag_in_text(decoded)
+            if flag:
+                best_results.append({
+                    'position': pos,
+                    'key': bytes(test_key),
+                    'flag': flag,
+                    'full_text': decoded,
+                    'printable_ratio': printable_ratio
+                })
+
+    for pos in range(len(encrypted) - len(test_string) + 1):
+        key_fragment = [encrypted[pos + i] ^ test_string[i] for i in range(len(test_string))]
         key = [None] * 10
-        
-        # Fill known key bytes
+
         consistent = True
         for i, kb in enumerate(key_fragment):
             key_idx = (pos + i) % 10
@@ -58,60 +64,14 @@ def try_decrypt_comprehensive(encrypted_hex):
                 break
         
         if not consistent:
-            continue            
-        # Complete partial key
+            continue
+
         if any(k is None for k in key):
             for fill_byte in [0x00, 0x20, 0x41, 0x61, 0x30]:
                 test_key = [k if k is not None else fill_byte for k in key]
-                
-                decrypted = []
-                for i, c in enumerate(encrypted):
-                    decrypted.append(c ^ test_key[i % 10])
-                
-                try:
-                    decoded = bytes(decrypted).decode('ascii', errors='replace')
-                    printable_ratio = sum(1 for c in decoded if c.isprintable()) / len(decoded)
-                    
-                    if printable_ratio > 0.7:
-                        pattern = r'NASA_HW11\{[0-9A-Za-z_\':/@]+\}'
-                        if re.search(pattern, decoded):
-                            flag = find_valid_flag_in_text(decoded)
-                            if flag:
-                                best_results.append({
-                                    'position': pos,
-                                    'key': bytes(test_key),
-                                    'flag': flag,
-                                    'full_text': decoded,
-                                    'printable_ratio': printable_ratio
-                                })
-                except:
-                    continue
+                try_key(test_key, pos)
         else:
-            # All key bytes known
-            test_key = key
-            
-            decrypted = []
-            for i, c in enumerate(encrypted):
-                decrypted.append(c ^ test_key[i % 10])
-            
-            try:
-                decoded = bytes(decrypted).decode('ascii', errors='replace')
-                printable_ratio = sum(1 for c in decoded if c.isprintable()) / len(decoded)
-                
-                if printable_ratio > 0.7:
-                    pattern = r'NASA_HW11\{[0-9A-Za-z_\':/@]+\}'
-                    if re.search(pattern, decoded):
-                        flag = find_valid_flag_in_text(decoded)
-                        if flag:
-                            best_results.append({
-                                'position': pos,
-                                'key': bytes(test_key),
-                                'flag': flag,
-                                'full_text': decoded,
-                                'printable_ratio': printable_ratio
-                            })
-            except:
-                continue
+            try_key(key, pos)
     
     return best_results
 
@@ -124,7 +84,7 @@ def solve_part_a(conn: remote):
     
     # Collect 3 LCG states
     states = []
-    for i in range(3):
+    for _ in range(3):
         conn.recvuntil(b"Your choice: ")
         conn.sendline(b'1')
         conn.recvuntil(b"Guess a number: ")
@@ -169,9 +129,13 @@ def solve_part_a(conn: remote):
                 current_state = actual
     
     conn.recvuntil(b"Your choice: ")
-    conn.sendline(b'2')
+    conn.sendline(b"2")
     flag1_response = conn.recvline().decode()
-    print(f"FLAG1: {flag1_response.strip()}")
+    print(f"Response: {flag1_response.strip()}")
+    flag_start = flag1_response.find("NASA_HW11{")
+    flag_end = flag1_response.find("}", flag_start) + 1
+    flag1 = flag1_response[flag_start:flag_end]
+    print(f"FLAG1: {flag1}")
 
     return True
 
@@ -180,39 +144,29 @@ def solve_part_b(conn: remote):
     print("\n=== Part (b): OTP Attack for FLAG2 ===")
 
     conn.recvuntil(b"Your choice: ")
-    conn.sendline(b'3')
+    conn.sendline(b"3")
     
     encrypted_hex = None
     
-    try:
-        while True:
-            line = conn.recvline(timeout=3).decode()
-            
-            stripped = line.strip()
-            if len(stripped) > 50 and all(c in '0123456789abcdefABCDEF' for c in stripped):
-                encrypted_hex = stripped
-                print(f"Found encrypted data: {encrypted_hex[:60]}...")
-                break
-    except:
-        pass
+    while True:
+        line = conn.recvline(timeout=3).decode()
+        
+        stripped = line.strip()
+        if len(stripped) > 50 and all(c in "0123456789abcdefABCDEF" for c in stripped):
+            encrypted_hex = stripped
+            print(f"Found encrypted data: {encrypted_hex}")
+            break
     
     if not encrypted_hex:
         print("Could not find encrypted data")
         return False
         
-    print(f"Encrypted data length: {len(encrypted_hex)} hex chars")
-    
-    results = try_decrypt_comprehensive(encrypted_hex)
+    results = bruteforce_repeating_key_xor_flag(encrypted_hex)
     
     if results:
-        print(f"Found {len(results)} valid decryption(s):")
-        for i, result in enumerate(results):
-            print(f"\nDecryption {i+1}:")
-            print(f"  FLAG2: {result['flag']}")
-            print(f"  Full text: {result['full_text'][:100]}...")
-        
-        best_result = max(results, key=lambda x: x['printable_ratio'])
-        print(f"\nFLAG2: {best_result['flag']}")
+        best_result = max(results, key=lambda x: x["printable_ratio"])
+        print(f"Response: {best_result['full_text']}")
+        print(f"FLAG2: {best_result['flag']}")
         return True
     else:
         print("Failed to decrypt FLAG2")
@@ -232,13 +186,13 @@ def solve_part_c(conn: remote):
     print(f"Rainbow table built with {len(rainbow_table)} entries")
     
     conn.recvuntil(b"Your choice: ")
-    conn.sendline(b'4')
+    conn.sendline(b"4")
     
     # Process 10 PoW challenges with instant lookup
     for pow_num in range(10):
         try:
             # Receive the challenge prompt
-            line = conn.recvuntil(b': ').decode()
+            line = conn.recvuntil(b": ").decode()
             print(f"PoW {pow_num + 1}: {line.strip()}")
             
             # Extract target hash from the challenge
@@ -272,11 +226,11 @@ def solve_part_c(conn: remote):
         while True:
             line = conn.recvline(timeout=5).decode()
             print(f"Response: {line.strip()}")
-            if 'Thanks for helping out' in line and 'flag' in line:
+            if "Thanks for helping out" in line and "flag" in line:
                 # Extract flag from this line
-                flag_start = line.find('NASA_HW11{')
+                flag_start = line.find("NASA_HW11{")
                 if flag_start != -1:
-                    flag_end = line.find('}', flag_start) + 1
+                    flag_end = line.find("}", flag_start) + 1
                     flag3 = line[flag_start:flag_end]
                     print(f"FLAG3: {flag3}")
                     break
@@ -286,8 +240,98 @@ def solve_part_c(conn: remote):
     
     return True
 
+def solve_part_d(conn: remote):
+    """Club Membership MAC Reuse Attack for FLAG4"""
+    print("\n=== Part (d): Club Membership MAC Reuse Attack for FLAG4 ===")
+    
+    # Attack strategy: MAC reuse vulnerability
+    # The MAC only depends on SHA256(nonce||shared_key), not the username
+    # So we can get fatcat's MAC and reuse it with our own username
+    print("Step 1: Starting verification to get nonce...")
+    conn.recvuntil(b"Your choice: ")
+    conn.sendline(b"5")  # Ask fatcat to verify your club membership
+    
+    # Read the verification setup
+    line1 = conn.recvline().decode()  # "Let me verify if you're a member first."
+    line2 = conn.recvline().decode()  # "nonce: XXXXX"
+    
+    print(f"Verification message: {line1.strip()}")
+    print(f"Nonce line: {line2.strip()}")
+    
+    # Extract the nonce
+    if "nonce: " not in line2:
+        print("Failed to get nonce from verification")
+        return False
+    
+    nonce = line2.split("nonce: ")[1].strip()
+    print(f"Extracted nonce: {nonce}")
+    
+    # Step 2: Get the correct MAC by asking fatcat to prove with this nonce
+    # We need to open a second connection since we're in the middle of verification
+    print("Step 2: Opening second connection to get MAC from fatcat...")
+    
+    conn2 = remote("140.112.91.4", 1234)
+    
+    # Ask fatcat to prove with our nonce
+    conn2.recvuntil(b"Your choice: ")
+    conn2.sendline(b"6")  # Ask fatcat to prove his club membership
+    
+    conn2.recvuntil(b"Please give me a nonce: ")
+    conn2.sendline(nonce.encode())  # Use the same nonce from verification
+    
+    proof_line = conn2.recvline().decode()
+    print(f"Fatcat's proof: {proof_line.strip()}")
+    
+    conn2.close()
+    
+    # Extract MAC from proof
+    if "Proof: " not in proof_line:
+        print("Failed to get proof from fatcat")
+        return False
+    
+    proof_data = proof_line.split("Proof: ")[1].strip()
+    try:
+        _, correct_mac = proof_data.split("||")
+        print(f"Extracted MAC: {correct_mac}")
+    except:
+        print("Failed to parse proof")
+        return False
+    
+    # Step 3: Use the correct MAC with our own name for verification
+    print("Step 3: Submitting forged response...")
+    
+    my_name = "hacker" # can be any name except fatcat
+    forged_response = f"{my_name}||{correct_mac}"
+    
+    print(f"Sending: {forged_response}")
+    conn.sendline(forged_response.encode())
+    
+    # Step 4: Check for FLAG4
+    try:
+        response = conn.recvline(timeout=5).decode()
+        print(f"Response: {response.strip()}")
+        
+        if "MapleStory" in response and "flag" in response:
+            # Extract FLAG4
+            if "NASA_HW11{" in response:
+                flag_start = response.find("NASA_HW11{")
+                flag_end = response.find("}", flag_start) + 1
+                flag4 = response[flag_start:flag_end]
+                print(f"FLAG4: {flag4}")
+                return True
+            else:
+                print("Success message but no flag found")
+                return True
+        else:
+            print("Verification failed")
+            return False
+            
+    except Exception as e:
+        print(f"Error reading response: {e}")
+        return False
+
 def solve_all_parts():
-    conn: remote = remote('140.112.91.4', 1234)
+    conn: remote = remote("140.112.91.4", 1234)
     
     try:
         # PART (A): LCG Attack
@@ -308,6 +352,12 @@ def solve_all_parts():
             print("Failed to solve part (c)")
             return False
         
+        # PART (D): Club Membership MAC Attack
+        success_d = solve_part_d(conn)
+        if not success_d:
+            print("Failed to solve part (d)")
+            return False
+
         return True
 
     except Exception as e:
@@ -319,7 +369,7 @@ def solve_all_parts():
     finally:
         conn.close()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = solve_all_parts()
 
     if success:
