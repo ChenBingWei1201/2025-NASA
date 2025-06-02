@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+
+def solve_challenge():
+    # From objdump analysis:
+    # key at 0x4020: "nAs42O2S" 
+    # pattern at 0x4040: encrypted flag
+    # flag_len at 0x4068: 0x26 = 38
+    # key_len at 0x406c: 0x08 = 8
+    
+    key = "nAs42O2S"
+    key_len = 8
+    flag_len = 38
+    
+    # Encrypted pattern from hex dump (0x4040-0x4065)
+    encrypted_pattern = [
+        0x26, 0x16, 0x42, 0x06, 0x49, 0x27, 0x65, 0x63,  # 0x4040-0x4047
+        0x31, 0x79, 0x26, 0x60, 0x6d, 0x18, 0x5b, 0x07,  # 0x4048-0x404f
+        0x26, 0x1e, 0x01, 0x07, 0x64, 0x7c, 0x60, 0x20,  # 0x4050-0x4057
+        0x0b, 0x1e, 0x16, 0x7a, 0x0b, 0x7e, 0x7c, 0x16,  # 0x4058-0x405f
+        0x5d, 0x33, 0x1a, 0x5a, 0x75, 0x32               # 0x4060-0x4065
+    ]
+    
+    # Reverse the XOR encryption
+    flag = ""
+    for i in range(flag_len):
+        decrypted_char = encrypted_pattern[i] ^ ord(key[i % key_len])
+        flag += chr(decrypted_char)
+    
+    print(f"Key: {key}")
+    print(f"Key length: {key_len}")
+    print(f"Flag length: {flag_len}")
+    print(f"Decrypted flag: {flag}")
+    
+    return flag
+
+if __name__ == "__main__":
+    flag = solve_challenge()
