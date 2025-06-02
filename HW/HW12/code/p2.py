@@ -10,7 +10,7 @@ def extract_hidden_message(image_path):
     # Get pixels' values
     pixels = list(img.getdata())
     
-    extracted_data = ""
+    hidden_message = ""
     i = 0
     
     while True:
@@ -35,20 +35,21 @@ def extract_hidden_message(image_path):
             break
             
         char = chr(char_code)
-        extracted_data += char
+        hidden_message += char
         
         # Stop if we find the flag ending
-        if extracted_data.endswith("}"):
+        if hidden_message.endswith("}"):
             break
             
         i += 1
     
-    return extracted_data
+    return hidden_message
 
 if __name__ == "__main__":
+    # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Extract the flag
+    # Extract the flag from the image (image is in the same directory as the script)
     image_path = os.path.join(script_dir, "secret_mygo.png")
     hidden_message = extract_hidden_message(image_path)
     print(f"flag: {hidden_message}")
