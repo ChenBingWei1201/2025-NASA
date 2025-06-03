@@ -46,7 +46,6 @@ def extract_hidden_message(image_path):
     return hidden_message
 
 if __name__ == "__main__":
-    # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Extract the flag from the image (image is in the same directory as the script)

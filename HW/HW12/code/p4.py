@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-def solve_challenge():
-    # From objdump analysis:
+def solve():
+    # From objdump:
     # key at 0x4020: "nAs42O2S" 
     # pattern at 0x4040: encrypted flag
     # flag_len at 0x4068: 0x26 = 38
@@ -34,4 +34,4 @@ def solve_challenge():
     return flag
 
 if __name__ == "__main__":
-    flag = solve_challenge()
+    flag = solve()

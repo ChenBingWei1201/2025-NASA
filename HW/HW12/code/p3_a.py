@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import hashlib
 
 target_hash = '40c3d69c8a012e181bd63d215d61a1df44e8fe7c182da6d24f26b0fae5348010'

